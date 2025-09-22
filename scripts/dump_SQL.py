@@ -114,6 +114,9 @@ def main():
   }
   flat_df.to_sql(table, conn, if_exists="replace", index=False, dtype=dtype)
 
+  # Create primary key using unique index
+  conn.execute(f"CREATE UNIQUE INDEX idx_pk_{table} ON {table} (user_pseudo_id, event_timestamp, event_name)")
+
   with open(sql_dump_path, "w", encoding="utf-8") as f:
     for line in conn.iterdump():
       f.write(f"{line}\n")
