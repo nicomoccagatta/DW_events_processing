@@ -102,7 +102,17 @@ def main():
   sqlite_path = Path(sqlite_path)
   sql_dump_path = Path(sql_dump_path)
   conn = sqlite3.connect(sqlite_path.as_posix())
-  flat_df.to_sql(table, conn, if_exists="replace", index=False)
+
+  # Define los tipos SQL deseados solo para ciertas columnas
+  dtype = {
+    "event_timestamp": "BIGINT",
+    "event_previous_timestamp": "BIGINT",
+    "user_first_touch_timestamp": "BIGINT",
+    "event_bundle_sequence_id": "BIGINT",
+    "stream_id": "BIGINT"
+    # Agregar aquí más columnas si lo necesitamos
+  }
+  flat_df.to_sql(table, conn, if_exists="replace", index=False, dtype=dtype)
 
   with open(sql_dump_path, "w", encoding="utf-8") as f:
     for line in conn.iterdump():
