@@ -56,11 +56,111 @@ def main():
   sqlite_path = "events_flat.db"
   sql_dump_path = "./dump_SQL/dump.sql"
   base_cols = [
-    "event_date", "event_timestamp", "event_name", "user_pseudo_id", "user_id",
-    "privacy_info", "user_properties", "user_ltv", "device", "geo", "app_info",
-    "traffic_source", "event_dimensions", "ecommerce", "items",
-    "event_previous_timestamp", "event_value_in_usd", "user_first_touch_timestamp",
-    "platform", "stream_id", "event_bundle_sequence_id", "event_server_timestamp_offset"
+    "event_date",
+    "event_timestamp",
+    "event_name",
+    "user_pseudo_id",
+    "user_ltv", # @TODO: Tenemos que separar
+    #     "user_ltv": {
+    #       "revenue": "16.0",
+    #       "currency": "USD"
+    #     },
+
+    "device", # @TODO: Tenemos que separar
+    #     "device": {
+    #       "category": "desktop",
+    #       "mobile_brand_name": "Apple",
+    #       "mobile_model_name": "Safari",
+    #       "mobile_marketing_name": "\u003cOther\u003e",
+    #       "mobile_os_hardware_model": null,
+    #       "operating_system": "Macintosh",
+    #       "operating_system_version": "Macintosh Intel 11.1",
+    #       "vendor_id": null,
+    #       "advertising_id": null,
+    #       "language": null,
+    #       "is_limited_ad_tracking": "No",
+    #       "time_zone_offset_seconds": null,
+    #       "web_info": {
+    #         "browser": "Chrome",
+    #         "browser_version": "87.0"
+    #       }
+    #     },
+
+    "geo", # @TODO: Tenemos que separar
+    #      "geo": {
+    #        "continent": "Americas",
+    #        "sub_continent": "Northern America",
+    #        "country": "United States",
+    #        "region": "Massachusetts",
+    #        "city": "Boston",
+    #        "metro": "(not set)"
+    #      },
+
+    "ecommerce", # @TODO: Tenemos que separar: 
+    #      "ecommerce": {
+    #        "total_item_quantity": "1",
+    #        "purchase_revenue_in_usd": "16.0",
+    #        "purchase_revenue": "16.0",
+    #        "refund_value_in_usd": null,
+    #        "refund_value": null,
+    #        "shipping_value_in_usd": null,
+    #        "shipping_value": null,
+    #        "tax_value_in_usd": "0.0",
+    #        "tax_value": "0.0",
+    #        "unique_items": "1",
+    #        "transaction_id": "881281"
+    #      },
+
+    "items", # @TODO: Tenemos que separar: 
+    #      "items": [{
+    #        "item_id": "9195912",
+    #        "item_name": "Womens Google Striped LS",
+    #        "item_brand": "Google",
+    #        "item_variant": " MD",
+    #        "item_category": "Apparel",
+    #        "item_category2": "(not set)",
+    #        "item_category3": "(not set)",
+    #        "item_category4": "(not set)",
+    #        "item_category5": "(not set)",
+    #        "price_in_usd": null,
+    #        "price": "16.0",
+    #        "quantity": "1",
+    #        "item_revenue_in_usd": null,
+    #        "item_revenue": null,
+    #        "item_refund_in_usd": null,
+    #        "item_refund": null,
+    #        "coupon": "(not set)",
+    #        "affiliation": "(not set)",
+    #        "location_id": "(not set)",
+    #        "item_list_id": "(not set)",
+    #        "item_list_name": "Not available in demo dataset",
+    #        "item_list_index": "(not set)",
+    #        "promotion_id": "(not set)",
+    #        "promotion_name": "Complete Your Collection",
+    #        "creative_name": "(not set)",
+    #        "creative_slot": "(not set)"
+    #      }]
+
+    "user_first_touch_timestamp",
+    "platform",
+    "stream_id",
+    "event_bundle_sequence_id",
+
+    # "traffic_source", @TODO: Lo necesitamos??
+    #      "traffic_source": {
+    #        "medium": "organic",
+    #        "name": "(organic)",
+    #        "source": "google"
+    #      },
+
+    # "app_info",
+    # "event_dimensions",
+    # "event_previous_timestamp",
+    # "event_value_in_usd",
+    # "user_id",
+    # "privacy_info",
+    # "user_properties",
+    # "event_server_timestamp_offset"
   ]
   # ------------------------------
   paths = sorted(glob(source)) or [source]
