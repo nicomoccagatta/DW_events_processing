@@ -57,20 +57,6 @@ def flatten_nested_json(df: pd.DataFrame, column: str) -> pd.DataFrame:
   flat.columns = [f"{column}_{c}" for c in flat.columns]
   return flat
 
-# @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-# @TODO: FIX THIS OR THINK A BETTER WAY TO HANDLE ITEMS ARRAY
-# @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-# def flatten_items_array(df: pd.DataFrame) -> pd.DataFrame:
-#   """Flatten items array taking first item only."""
-#   items_data = df['items'].apply(
-#     lambda x: json.loads(x)[0] if isinstance(x, str) and x != '[]' 
-#     else (x[0] if isinstance(x, list) and len(x) > 0 else {})
-#   )
-#   items_flat = pd.json_normalize(items_data.dropna().tolist(), errors='ignore')
-#   items_flat.columns = [f"item_{c}" for c in items_flat.columns]
-#   return items_flat
-# @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-
 # ---------- Main ----------
 
 def main():
@@ -207,22 +193,12 @@ def main():
     if col in df_all.columns:
       flattened_dfs.append(flatten_nested_json(df_all, col))
 
-  # @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-  # @TODO: FIX THIS OR THINK A BETTER WAY TO HANDLE ITEMS ARRAY
-  # @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-  # # Handle items array separately
-  # if 'items' in df_all.columns:
-  #   flattened_dfs.append(flatten_items_array(df_all))
-  # @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-
   # Tomar columnas base disponibles y eliminar las que fueron aplanadas
   base_cols = [c for c in base_cols if c in df_all.columns]
   base_df = df_all[base_cols].copy()
   for col in nested_columns.keys():
     if col in base_df.columns:
       base_df = base_df.drop(columns=[col])
-  if 'items' in base_df.columns:
-    base_df = base_df.drop(columns=['items'])
 
   # Concatenar base + event_params + flattened
   flat_df = pd.concat(
@@ -236,9 +212,17 @@ def main():
 
   # Asegurar que no queden tipos complejos
   for col in flat_df.columns:
-    if flat_df[col].apply(lambda x: isinstance(x, (dict, list))).any():
+    if col == 'items':  # Special handling for items array
       flat_df[col] = flat_df[col].apply(
-        lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, (dict, list)) else x
+        lambda x: json.dumps(x.tolist() if isinstance(x, np.ndarray) 
+                           else (json.loads(x) if isinstance(x, str) 
+                           else x), ensure_ascii=False)
+      )
+    elif flat_df[col].apply(lambda x: isinstance(x, (dict, list, np.ndarray))).any():
+      flat_df[col] = flat_df[col].apply(
+        lambda x: json.dumps(x.tolist() if isinstance(x, np.ndarray)
+                           else x, ensure_ascii=False) 
+                 if isinstance(x, (dict, list, np.ndarray)) else x
       )
 
   # Guardar en SQLite y hacer dump
@@ -257,13 +241,6 @@ def main():
     "ecommerce_purchase_revenue_in_usd": "REAL",
     "ecommerce_purchase_revenue": "REAL",
     "ecommerce_total_item_quantity": "INTEGER",
-
-
-    # @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
-    # "item_quantity": "INTEGER",
-    # "item_price": "REAL",
-    # "item_price_in_usd": "REAL"
-    # @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO @TODO
   }
 
   # Create table and save data
