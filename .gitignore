@@ -2,3 +2,4 @@
 events_flat.db
 
 dump_SQL/dump.sql
+dump_SQL/backup.sql
