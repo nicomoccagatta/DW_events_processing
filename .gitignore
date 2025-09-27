@@ -1,2 +1,4 @@
 .DS_Store
 events_flat.db
+
+dump_SQL/dump.sql
