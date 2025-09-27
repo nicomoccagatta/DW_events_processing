@@ -41,7 +41,18 @@ psql -U postgres -d events_flat -f dump_SQL/02-olap.sql
 ## dump_SQL/schemas_dumps
 Aca tenemos los esquemas de las tablas generadas en el dump SQL.
   * `dump_SQL/schemas_dumps/public_schema.sql`: Esquema `public` con la data `events_flat`.
+    * Este dump se puede importar con psql con este comando:
+
+```sh
+psql -U postgres -d events_flat -f dump_SQL/schemas_dumps/public_schema.sql
+```
+
   * `dump_SQL/schemas_dumps/dw_schema.sql`: Esquema `dw` de las vistas OLAP generadas `categoria, dispositivo, eventos, fecha, pagina, producto, usuario, ventas`.
+    * Este dump se puede importar con psql con este comando:
+
+```sh
+psql -U postgres -d events_flat -f dump_SQL/schemas_dumps/dw_schema.sql
+```
 
 
 ![](https://raw.githubusercontent.com/nicomoccagatta/DW_events_processing/refs/heads/main/dump_SQL/schemas_dumps/public_schema.png?raw=true)
