@@ -1,34 +1,49 @@
 ### Aca vamos avanzando con el proyecto..
 
-## dump_DB
-Hice el dump de eventos en archivos .parquet, y los subi a un bucket de GCloud:
+## input_DB
+Hice el dump de eventos en archivos .parquet, y tambien los subi a un bucket de GCloud:
   * Bucket: https://storage.googleapis.com/dump_events/
   * Archivo ejemplo: https://storage.googleapis.com/dump_events/events_20201101.parquet
-
-La idea es poner en esta folder todos los archivos .parquet del bucket?.
-
-Con estos archivos.parquet, tendriamos que generar nuestro dump SQL.
+  * Estos archivos los genere con el script `scripts/fetch_events.sh`, que usa la herramienta de linea de comandos `bq` para exportar los eventos desde BigQuery (GA4) a Google Cloud Storage en formato Parquet.
+  * Con estos archivos.parquet, generamos nuestro dump SQL.
 
 ## scripts
   * `dump_SQL.py`: Script para generar el dump SQL a partir de los archivos .parquet
-    * Tenemos que modificar este script para generar el dump SQL que necesitamos.
     * Este script se corre con:
 ```sh
 python3 ./scripts/dump_SQL.py
 ```
   * `fetch_events.sh`: Script para exportar eventos de BigQuery (GA4) a Google Cloud Storage en formato Parquet
-  * `fetch_events_2.sh`: Script para exportar eventos de BigQuery (GA3) a Google Cloud Storage en formato Parquet
 
 ## dump_SQL
-  * Aca tendriamos que generar el/los dump/s SQL necesarios.
-  * Para correr el script `dump_SQL.py`, pgAdmin no puede cargarlo en memoria, por lo que debemos correrlo en una terminal.
+  * Aca tenemos los dumps SQL para generar nuestra base de datos.
+  * `dump_SQL/01-dump.sql`: Script SQL para crear la tabla `events_flat` y cargar los datos.
+  * Para correr el script `dump_SQL/01-dump.sql`, pgAdmin no puede cargarlo en memoria, por lo que debemos correrlo en una terminal.
+
 ```sh
-psql -U postgres -d events_flat -f dump_SQL/dump.sql
+psql -U postgres -d events_flat -f dump_SQL/01-dump.sql
 ```
-  * Supongo que luego deberiamos correr el script `olap.sql` para generar las vistas OLAP con:
+
+  * Este script genera la tabla `events_flat` con todos los eventos.
+  * `dump_SQL/02-olap.sql`: Script SQL para crear vistas OLAP a partir de la tabla `events_flat`.
+  * Luego deberiamos correr el script `dump_SQL/02-olap.sql` para generar las vistas OLAP `categoria, dispositivo, eventos, fecha, pagina, producto, usuario, ventas`.
+
 ```sh
-psql -U postgres -d events_flat -f dump_SQL/olap.sql
+psql -U postgres -d events_flat -f dump_SQL/02-olap.sql
 ```
+
+## dump_SQL/schemas_dumps
+Aca tenemos los esquemas de las tablas generadas en el dump SQL.
+  * `dump_SQL/schemas_dumps/public_schema.sql`: Esquema `public` con la data `events_flat`.
+  * `dump_SQL/schemas_dumps/dw_schema.sql`: Esquema `dw` de las vistas OLAP generadas `categoria, dispositivo, eventos, fecha, pagina, producto, usuario, ventas`.
+
+![](https://github.com/nicomoccagatta/DW_events_processing/blob/main/dump_SQL/schemas_dumps/public_schema.png?raw=true)
+
+![](https://github.com/nicomoccagatta/DW_events_processing/blob/main/dump_SQL/schemas_dumps/dw_schema.png?raw=true)
+
+
+## queries/analysis.sql
+* Aca tenemos queries de analisis de los datos.
 
 ## Data de eventos
 ```sh

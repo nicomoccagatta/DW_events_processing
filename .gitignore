@@ -1,5 +1,7 @@
 .DS_Store
 events_flat.db
 
-dump_SQL/dump.sql
-dump_SQL/backup.sql
+dump_SQL/01-dump.sql
+
+dump_SQL/schema_dumps/dw_schema.sql
+dump_SQL/schema_dumps/public_schema.sql
