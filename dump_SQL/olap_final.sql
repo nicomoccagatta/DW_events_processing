@@ -80,7 +80,7 @@ SELECT
     ELSE '[]'::jsonb
   END                             AS j_items
 
-FROM public.events_20201101_flat e;
+FROM public.events_flat e;
 
 -- 1 fila por ítem (solo para purchase)
 CREATE OR REPLACE VIEW v_stg_items AS
