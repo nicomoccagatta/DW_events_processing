@@ -61,8 +61,102 @@ def flatten_nested_json(df: pd.DataFrame, column: str) -> pd.DataFrame:
 
 def main():
   # --- Definir variables aquí ---
-  source = "./input_DB/events_20201101.parquet"
-  table = "events_20201101_flat"
+  # source = "./input_DB/events_20201101.parquet"
+  source = [
+    "./input_DB/events_20201101.parquet",
+    "./input_DB/events_20201102.parquet",
+    "./input_DB/events_20201103.parquet",
+    "./input_DB/events_20201104.parquet",
+    "./input_DB/events_20201105.parquet",
+    "./input_DB/events_20201106.parquet",
+    "./input_DB/events_20201107.parquet",
+    "./input_DB/events_20201108.parquet",
+    "./input_DB/events_20201109.parquet",
+    "./input_DB/events_20201110.parquet",
+    "./input_DB/events_20201111.parquet",
+    "./input_DB/events_20201112.parquet",
+    "./input_DB/events_20201113.parquet",
+    "./input_DB/events_20201114.parquet",
+    "./input_DB/events_20201115.parquet",
+    "./input_DB/events_20201116.parquet",
+    "./input_DB/events_20201117.parquet",
+    "./input_DB/events_20201118.parquet",
+    "./input_DB/events_20201119.parquet",
+    "./input_DB/events_20201120.parquet",
+    "./input_DB/events_20201121.parquet",
+    "./input_DB/events_20201122.parquet",
+    "./input_DB/events_20201123.parquet",
+    "./input_DB/events_20201124.parquet",
+    "./input_DB/events_20201125.parquet",
+    "./input_DB/events_20201126.parquet",
+    "./input_DB/events_20201127.parquet",
+    "./input_DB/events_20201128.parquet",
+    "./input_DB/events_20201129.parquet",
+    "./input_DB/events_20201130.parquet",
+    "./input_DB/events_20201201.parquet",
+    "./input_DB/events_20201202.parquet",
+    "./input_DB/events_20201203.parquet",
+    "./input_DB/events_20201204.parquet",
+    "./input_DB/events_20201205.parquet",
+    "./input_DB/events_20201206.parquet",
+    "./input_DB/events_20201207.parquet",
+    "./input_DB/events_20201208.parquet",
+    "./input_DB/events_20201209.parquet",
+    "./input_DB/events_20201210.parquet",
+    "./input_DB/events_20201211.parquet",
+    "./input_DB/events_20201212.parquet",
+    "./input_DB/events_20201213.parquet",
+    "./input_DB/events_20201214.parquet",
+    "./input_DB/events_20201215.parquet",
+    "./input_DB/events_20201216.parquet",
+    "./input_DB/events_20201217.parquet",
+    "./input_DB/events_20201218.parquet",
+    "./input_DB/events_20201219.parquet",
+    "./input_DB/events_20201220.parquet",
+    "./input_DB/events_20201221.parquet",
+    "./input_DB/events_20201222.parquet",
+    "./input_DB/events_20201223.parquet",
+    "./input_DB/events_20201224.parquet",
+    "./input_DB/events_20201225.parquet",
+    "./input_DB/events_20201226.parquet",
+    "./input_DB/events_20201227.parquet",
+    "./input_DB/events_20201228.parquet",
+    "./input_DB/events_20201229.parquet",
+    "./input_DB/events_20201230.parquet",
+    "./input_DB/events_20201231.parquet",
+    "./input_DB/events_20210101.parquet",
+    "./input_DB/events_20210102.parquet",
+    "./input_DB/events_20210103.parquet",
+    "./input_DB/events_20210104.parquet",
+    "./input_DB/events_20210105.parquet",
+    "./input_DB/events_20210106.parquet",
+    "./input_DB/events_20210107.parquet",
+    "./input_DB/events_20210108.parquet",
+    "./input_DB/events_20210109.parquet",
+    "./input_DB/events_20210110.parquet",
+    "./input_DB/events_20210111.parquet",
+    "./input_DB/events_20210112.parquet",
+    "./input_DB/events_20210113.parquet",
+    "./input_DB/events_20210114.parquet",
+    "./input_DB/events_20210115.parquet",
+    "./input_DB/events_20210116.parquet",
+    "./input_DB/events_20210117.parquet",
+    "./input_DB/events_20210118.parquet",
+    "./input_DB/events_20210119.parquet",
+    "./input_DB/events_20210120.parquet",
+    "./input_DB/events_20210121.parquet",
+    "./input_DB/events_20210122.parquet",
+    "./input_DB/events_20210123.parquet",
+    "./input_DB/events_20210124.parquet",
+    "./input_DB/events_20210125.parquet",
+    "./input_DB/events_20210126.parquet",
+    "./input_DB/events_20210127.parquet",
+    "./input_DB/events_20210128.parquet",
+    "./input_DB/events_20210129.parquet",
+    "./input_DB/events_20210130.parquet",
+    "./input_DB/events_20210131.parquet"
+  ]
+  table = "events_flat"
   sqlite_path = "events_flat.db"
   sql_dump_path = "./dump_SQL/dump.sql"
 
@@ -172,7 +266,7 @@ def main():
   ]
 
   # ------------------------------
-  paths = sorted(glob(source)) or [source]
+  paths = sorted(source) or [source]
 
   # Leer y concatenar
   dfs = []
