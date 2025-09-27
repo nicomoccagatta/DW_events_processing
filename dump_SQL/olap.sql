@@ -38,7 +38,6 @@ SELECT
 
   -- engagement
   COALESCE(NULLIF(e.engagement_time_msec::text,'')::bigint,0) AS engagement_time_msec,
-  COALESCE(NULLIF(e.percent_scrolled::text,'')::numeric, NULL) AS percent_scrolled,
   NULLIF(e.search_term,'')          AS search_term,
 
   -- ventas
@@ -648,5 +647,5 @@ SELECT
     (a.agregado - COALESCE(p.comprado,0)) AS abandonados
 FROM add_to_cart a
 LEFT JOIN purchased p ON a.producto_id = p.producto_id
-WHERE (a.agregado - COALESCE(p.comprado,0)) > 0
--- ORDER BY (a.agregado - COALESCE(p.comprado,0)) DESC ;
+WHERE (a.agregado - COALESCE(p.comprado,0)) > 0;
+--ORDER BY (a.agregado - COALESCE(p.comprado,0)) DESC ;
