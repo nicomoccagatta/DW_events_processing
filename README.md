@@ -25,9 +25,9 @@ python3 ./scripts/dump_SQL.py
 ```sh
 psql -U postgres -d events_flat -f dump_SQL/dump.sql
 ```
-  * Supongo que luego deberiamos correr el script `olap_final.sql` para generar las vistas OLAP con:
+  * Supongo que luego deberiamos correr el script `olap.sql` para generar las vistas OLAP con:
 ```sh
-psql -U postgres -d events_flat -f dump_SQL/olap_final.sql
+psql -U postgres -d events_flat -f dump_SQL/olap.sql
 ```
 
 ## Data de eventos
