@@ -11,8 +11,14 @@ Hice el dump de eventos en archivos .parquet, y tambien los subi a un bucket de 
   * `dump_SQL.py`: Script para generar el dump SQL a partir de los archivos .parquet
     * Este script se corre con:
 ```sh
-python3 ./scripts/dump_SQL.py
+➜  Proyecto git:(main) ✗ python3 ./scripts/dump_SQL.py
+✅ Dump generado
+Filas: 1,101,492  Columnas: 68
+SQLite: events_flat.db
+Dump SQL: dump_SQL/dump.sql
+Columnas: ['event_date', 'event_timestamp', 'event_name', 'user_pseudo_id', 'items', 'user_first_touch_timestamp', 'platform', 'stream_id', 'event_bundle_sequence_id', 'session_engaged', 'ga_session_number', 'page_location', 'ga_session_id', 'engaged_session_event', 'page_title', 'page_referrer', 'clean_event', 'engagement_time_msec', 'term', 'all_data', 'medium', 'source', 'campaign', 'debug_mode', 'transaction_id', 'value', 'payment_type', 'currency', 'tax', 'gclid', 'coupon', 'promotion_name', 'gclsrc', 'shipping_tier', 'dcclid', 'user_ltv_revenue', 'user_ltv_currency', 'device_category', 'device_mobile_brand_name', 'device_mobile_model_name', 'device_mobile_marketing_name', 'device_mobile_os_hardware_model', 'device_operating_system', 'device_operating_system_version', 'device_vendor_id', 'device_advertising_id', 'device_language', 'device_is_limited_ad_tracking', 'device_time_zone_offset_seconds', 'device_web_info_browser', 'device_web_info_browser_version', 'geo_continent', 'geo_sub_continent', 'geo_country', 'geo_region', 'geo_city', 'geo_metro', 'ecommerce_total_item_quantity', 'ecommerce_purchase_revenue_in_usd', 'ecommerce_purchase_revenue', 'ecommerce_refund_value_in_usd', 'ecommerce_refund_value', 'ecommerce_shipping_value_in_usd', 'ecommerce_shipping_value', 'ecommerce_tax_value_in_usd', 'ecommerce_tax_value', 'ecommerce_unique_items', 'ecommerce_transaction_id']
 ```
+
   * `fetch_events.sh`: Script para exportar eventos de BigQuery (GA4) a Google Cloud Storage en formato Parquet
 
 ## dump_SQL
@@ -46,13 +52,4 @@ Aca tenemos los esquemas de las tablas generadas en el dump SQL.
 * Aca tenemos queries de analisis de los datos.
 
 ## Data de eventos
-```sh
-➜  Proyecto git:(main) ✗ python3 ./scripts/dump_SQL.py
-✅ Dump generado
-Filas: 1,101,492  Columnas: 68
-SQLite: events_flat.db
-Dump SQL: dump_SQL/dump.sql
-Columnas: ['event_date', 'event_timestamp', 'event_name', 'user_pseudo_id', 'items', 'user_first_touch_timestamp', 'platform', 'stream_id', 'event_bundle_sequence_id', 'session_engaged', 'ga_session_number', 'page_location', 'ga_session_id', 'engaged_session_event', 'page_title', 'page_referrer', 'clean_event', 'engagement_time_msec', 'term', 'all_data', 'medium', 'source', 'campaign', 'debug_mode', 'transaction_id', 'value', 'payment_type', 'currency', 'tax', 'gclid', 'coupon', 'promotion_name', 'gclsrc', 'shipping_tier', 'dcclid', 'user_ltv_revenue', 'user_ltv_currency', 'device_category', 'device_mobile_brand_name', 'device_mobile_model_name', 'device_mobile_marketing_name', 'device_mobile_os_hardware_model', 'device_operating_system', 'device_operating_system_version', 'device_vendor_id', 'device_advertising_id', 'device_language', 'device_is_limited_ad_tracking', 'device_time_zone_offset_seconds', 'device_web_info_browser', 'device_web_info_browser_version', 'geo_continent', 'geo_sub_continent', 'geo_country', 'geo_region', 'geo_city', 'geo_metro', 'ecommerce_total_item_quantity', 'ecommerce_purchase_revenue_in_usd', 'ecommerce_purchase_revenue', 'ecommerce_refund_value_in_usd', 'ecommerce_refund_value', 'ecommerce_shipping_value_in_usd', 'ecommerce_shipping_value', 'ecommerce_tax_value_in_usd', 'ecommerce_tax_value', 'ecommerce_unique_items', 'ecommerce_transaction_id']
-➜  Proyecto git:(main) ✗ ls -l dump_SQL/dump.sql
--rw-r--r--@ 1 nicomoccagatta  staff  3396285317 27 Sep 00:51 dump_SQL/dump.sql
-```
+* En `misc/events.json` tenemos un ejemplo de eventos en formato JSON, que es el formato original en que se encuentran los eventos en GA4.
