@@ -1,1 +1,2 @@
+*.gz filter=lfs diff=lfs merge=lfs -text
 dump_SQL/dump.sql.gz filter=lfs diff=lfs merge=lfs -text
