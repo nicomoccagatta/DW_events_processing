@@ -181,6 +181,10 @@ def main():
     dfs.append(df)
   df_all = pd.concat(dfs, ignore_index=True) if len(dfs) > 1 else dfs[0]
 
+  # Filtrar eventos especificos
+  allowed_events = ["add_to_cart", "purchase", "begin_checkout", "session_start", "first_visit", "view_item"]
+  df_all = df_all[df_all['event_name'].isin(allowed_events)]
+
   # Aplanar event_params a columnas
   if "event_params" not in df_all.columns:
     raise ValueError("⚠️ La columna 'event_params' no está en el parquet")
