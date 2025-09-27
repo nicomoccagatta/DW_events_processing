@@ -338,7 +338,7 @@ def main():
     "user_ltv_revenue": "REAL",
     "ecommerce_purchase_revenue_in_usd": "REAL",
     "ecommerce_purchase_revenue": "REAL",
-    "ecommerce_total_item_quantity": "INTEGER",
+    "ecommerce_total_item_quantity": "BIGINT",
   }
 
   # Create table and save data
