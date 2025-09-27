@@ -38,7 +38,6 @@ SELECT
 
   -- engagement
   COALESCE(NULLIF(e.engagement_time_msec::text,'')::bigint,0) AS engagement_time_msec,
-  NULLIF(e.search_term,'')          AS search_term,
 
   -- ventas
   CASE
@@ -85,8 +84,7 @@ END AS transaction_id,
     ELSE '[]'::jsonb
   END                             AS j_items
 
-FROM public.events_20201101_flat e
-where event_name in ('view_item','purchase','add_to_cart');
+FROM public.events_flat e;
 
 -- 1 fila por ítem (solo para purchase)
 CREATE OR REPLACE VIEW v_stg_items AS
@@ -648,4 +646,3 @@ SELECT
 FROM add_to_cart a
 LEFT JOIN purchased p ON a.producto_id = p.producto_id
 WHERE (a.agregado - COALESCE(p.comprado,0)) > 0;
---ORDER BY (a.agregado - COALESCE(p.comprado,0)) DESC ;
