@@ -1,0 +1,648 @@
+SET SEARCH_PATH to dw;
+-- View AnoSemana con numero de semana basado en el primer dia de la semana
+DROP VIEW IF EXISTS AnoSemana;
+CREATE VIEW AnoSemana AS
+SELECT
+	id,
+    EXTRACT(YEAR FROM DATE_TRUNC('week', fecha)::date)  AS año,
+	EXTRACT(WEEK FROM DATE_TRUNC('week', fecha)::date)  AS semana
+FROM dw.fecha 
+ORDER BY año, semana;
+
+
+-- ANALISIS
+-- DE 
+-- PRODUCTOS Y VENTAS
+
+-- Mas vendidos
+SELECT 
+p.id AS producto_id, p.nombre AS producto_nombre, SUM(v.cantidad) AS total_vendido
+FROM dw.ventas v
+JOIN dw.producto p 
+ON v.producto_id = p.id
+GROUP BY p.id, p.nombre
+ORDER BY total_vendido DESC LIMIT 50;
+
+
+-- Menos vendidos
+SELECT 
+    p.id AS producto_id,
+    p.nombre AS producto_nombre,
+    SUM(v.cantidad) AS total_vendido
+FROM dw.ventas v
+JOIN dw.producto p 
+    ON v.producto_id = p.id
+GROUP BY p.id, p.nombre
+ORDER BY total_vendido ASC LIMIT 50;
+
+
+-- Total vendidos por categoria
+SELECT 
+    c.id AS categoria_id,
+    c.nombre AS categoria_nombre,
+    SUM(v.cantidad) AS total_items_vendidos,
+    SUM(v.monto) AS total_monto_vendido
+FROM dw.ventas v
+JOIN dw.producto p 
+    ON v.producto_id = p.id
+JOIN dw.categoria c 
+    ON p.categoria_id = c.id
+GROUP BY c.id, c.nombre
+ORDER BY total_monto_vendido DESC;
+
+-- Top 5 categorias por mes
+WITH weekly_sales AS (
+    SELECT 
+		año,
+		mes,
+        c.id   AS categoria_id,
+        c.nombre AS categoria_nombre,
+        SUM(v.cantidad) AS total_items_vendidos,
+        SUM(v.monto)    AS total_monto_vendido
+    FROM dw.ventas v 
+	JOIN dw.fecha f ON v.fecha_id = f.id
+    JOIN dw.producto p ON v.producto_id = p.id
+    JOIN dw.categoria c ON p.categoria_id = c.id
+    GROUP BY año, mes, c.id, c.nombre
+),
+ranked AS (
+    SELECT
+        ws.*,
+        SUM(total_monto_vendido) OVER (PARTITION BY mes) AS total_monto_semana,
+        RANK() OVER (PARTITION BY mes ORDER BY total_monto_vendido DESC) AS rank_num
+    FROM weekly_sales ws
+)
+SELECT
+    Año,
+	mes,
+    categoria_id,
+    categoria_nombre,
+    total_items_vendidos,
+    total_monto_vendido,
+    rank_num,
+    ROUND(total_monto_vendido::numeric / total_monto_semana * 100, 2) AS porcentaje_del_total
+FROM ranked
+WHERE rank_num <= 5
+ORDER BY año, mes, rank_num;
+
+-- add_to_cart mas abandonados
+WITH add_to_cart AS (
+    SELECT 
+        p.id AS producto_id,
+        p.nombre,
+        SUM(e.cantidad) AS agregado
+    FROM dw.eventos e
+    JOIN dw.producto p ON e.producto_id = p.id
+    WHERE e.tipo = 'add_to_cart'
+    GROUP BY p.id, p.nombre
+),
+purchased AS (
+    SELECT 
+        p.id AS producto_id,
+        SUM(v.cantidad) AS comprado
+    FROM dw.ventas v
+    JOIN dw.producto p ON v.producto_id = p.id
+    GROUP BY p.id
+)
+SELECT 
+    a.producto_id,
+    a.nombre,
+    a.agregado,
+    COALESCE(p.comprado,0) AS comprado,
+    (a.agregado - COALESCE(p.comprado,0)) AS abandonados
+FROM add_to_cart a
+LEFT JOIN purchased p ON a.producto_id = p.producto_id
+WHERE (a.agregado - COALESCE(p.comprado,0)) > 0
+ORDER BY abandonados DESC;
+
+-- productos más abandonados, top-10 mensual
+WITH add_to_cart AS (
+    SELECT 
+        f.año,
+        f.mes,
+        p.id   AS producto_id,
+        p.nombre,
+        SUM(e.cantidad) AS agregado
+    FROM dw.eventos e
+    JOIN dw.producto p ON e.producto_id = p.id
+    JOIN dw.fecha f    ON e.fecha_id = f.id
+    WHERE e.tipo = 'add_to_cart'
+    GROUP BY f.año, f.mes, p.id, p.nombre
+),
+purchased AS (
+    SELECT 
+        f.año,
+        f.mes,
+        p.id   AS producto_id,
+        SUM(v.cantidad) AS comprado
+    FROM dw.ventas v
+    JOIN dw.producto p ON v.producto_id = p.id
+    JOIN dw.fecha f    ON v.fecha_id = f.id
+    GROUP BY f.año, f.mes, p.id
+),
+metrics AS (
+    SELECT 
+        a.año,
+        a.mes,
+        a.producto_id,
+        a.nombre,
+        a.agregado,
+        COALESCE(p.comprado,0) AS comprado,
+        (a.agregado - COALESCE(p.comprado,0)) AS abandonados
+    FROM add_to_cart a
+    LEFT JOIN purchased p 
+           ON a.año = p.año 
+          AND a.mes = p.mes 
+          AND a.producto_id = p.producto_id
+    WHERE (a.agregado - COALESCE(p.comprado,0)) > 0
+),
+ranked AS (
+    SELECT
+        m.*,
+        RANK() OVER (PARTITION BY año, mes ORDER BY abandonados DESC) AS rank_num
+    FROM metrics m
+),
+with_delta AS (
+    SELECT
+        r.*,
+        LAG(rank_num) OVER (
+            PARTITION BY producto_id 
+            ORDER BY año, mes
+        ) AS prev_rank
+    FROM ranked r
+)
+SELECT
+    año,
+    mes,
+    producto_id,
+    nombre,
+    agregado,
+    comprado,
+    abandonados,
+    rank_num,
+    (prev_rank - rank_num) AS delta_rank
+FROM with_delta
+WHERE rank_num <= 10
+ORDER BY año, mes, rank_num;
+
+-- productos abandonados por semana, top-10 
+WITH add_to_cart AS (
+    SELECT 
+        f.año,
+        f.semana,
+        p.id   AS producto_id,
+        p.nombre,
+        SUM(e.cantidad) AS agregado
+    FROM dw.eventos e
+    JOIN dw.producto p ON e.producto_id = p.id
+    JOIN AnoSemana f    ON e.fecha_id = f.id
+    WHERE e.tipo = 'add_to_cart'
+    GROUP BY f.año, f.semana, p.id, p.nombre
+),
+purchased AS (
+    SELECT 
+        f.año,
+        f.semana,
+        p.id   AS producto_id,
+        SUM(v.cantidad) AS comprado
+    FROM dw.ventas v
+    JOIN dw.producto p ON v.producto_id = p.id
+    JOIN anosemana f    ON v.fecha_id = f.id
+    GROUP BY f.año, f.semana, p.id
+),
+metrics AS (
+    SELECT 
+        a.año,
+        a.semana,
+        a.producto_id,
+        a.nombre,
+        a.agregado,
+        COALESCE(p.comprado,0) AS comprado,
+        (a.agregado - COALESCE(p.comprado,0)) AS abandonados
+    FROM add_to_cart a
+    LEFT JOIN purchased p 
+           ON a.año = p.año 
+          AND a.semana = p.semana 
+          AND a.producto_id = p.producto_id
+    WHERE (a.agregado - COALESCE(p.comprado,0)) > 0
+),
+ranked AS (
+    SELECT
+        m.*,
+        RANK() OVER (PARTITION BY año, semana ORDER BY abandonados DESC) AS rank_num
+    FROM metrics m
+),
+with_delta AS (
+    SELECT
+        r.*,
+        LAG(rank_num) OVER (
+            PARTITION BY producto_id 
+            ORDER BY año, semana
+        ) AS prev_rank
+    FROM ranked r
+)
+SELECT
+    año,
+    semana,
+    producto_id,
+    nombre,
+    agregado,
+    comprado,
+    abandonados,
+    rank_num,
+    (prev_rank - rank_num) AS delta_rank
+FROM with_delta
+WHERE rank_num <= 10
+ORDER BY año, semana, rank_num;
+
+
+
+
+
+
+-- Ticket promedio
+WITH ordenes AS (
+    SELECT 
+        v.orden_id,
+        SUM(v.monto) AS monto_total
+    FROM dw.ventas v
+    GROUP BY v.orden_id
+)
+SELECT 
+    AVG(monto_total) AS ticket_promedio
+FROM ordenes;
+
+
+-- Evolución del ticket promedio y la media movil 
+WITH ordenes AS (
+    SELECT 
+        v.orden_id,
+        v.fecha_id,
+        SUM(v.monto) AS monto_total
+    FROM dw.ventas v
+    GROUP BY v.fecha_id, v.orden_id
+),
+ticket_semanal AS (
+    SELECT 
+        año,
+        semana,
+        ROUND(AVG(monto_total), 2) AS ticket_promedio
+    FROM ordenes o 
+    JOIN anosemana f ON o.fecha_id = f.id
+    GROUP BY año, semana
+),
+with_prev_week AS (
+    SELECT
+        año,
+        semana,
+        ticket_promedio,
+        ROUND(LAG(ticket_promedio) OVER (ORDER BY año, semana), 2) AS ticket_promedio_semana_anterior
+    FROM ticket_semanal
+),
+with_moving_avg AS (
+    SELECT
+        año,
+        semana,
+        ticket_promedio,
+        ticket_promedio_semana_anterior,
+        ROUND(AVG(ticket_promedio) OVER (
+            ORDER BY año, semana 
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ), 2) AS media_movil_3_semanas
+    FROM with_prev_week
+)
+SELECT
+    año,
+    semana,
+    ticket_promedio,
+    ticket_promedio_semana_anterior,
+    media_movil_3_semanas,
+    -- Delta vs previous week
+    ROUND((ticket_promedio - ticket_promedio_semana_anterior), 2) AS delta_semana_anterior,
+    -- Percentage change vs previous week
+    CASE 
+        WHEN ticket_promedio_semana_anterior > 0 
+        THEN ROUND(((ticket_promedio - ticket_promedio_semana_anterior) / ticket_promedio_semana_anterior) * 100, 2)
+        ELSE NULL 
+    END AS delta_porcentual_semana_anterior
+FROM with_moving_avg
+ORDER BY año, semana;
+
+
+
+-- Productos comprados juntos
+SELECT 
+    LEAST(p1.nombre, p2.nombre) AS producto_a,
+    GREATEST(p1.nombre, p2.nombre) AS producto_b,
+    COUNT(DISTINCT v1.orden_id) AS veces_comprados_juntos
+FROM dw.ventas v1
+JOIN dw.ventas v2 
+    ON v1.orden_id = v2.orden_id 
+   AND v1.producto_id < v2.producto_id   -- evita duplicar pares y self-joins
+JOIN dw.producto p1 ON v1.producto_id = p1.id
+JOIN dw.producto p2 ON v2.producto_id = p2.id
+GROUP BY producto_a, producto_b
+ORDER BY veces_comprados_juntos DESC
+LIMIT 20;
+
+
+
+-- Conversion rate por fuente de tráfico de usuarios
+WITH visitas AS (
+    SELECT DISTINCT 
+        b.user_pseudo_id,
+        NULLIF(b.source,'') AS source
+    FROM dw.v_stg_base b
+    WHERE b.user_pseudo_id IS NOT NULL
+),
+compradores AS (
+    SELECT DISTINCT
+        v.usuario_id,
+        u.user_key,
+        NULLIF(b.source,'') AS source
+    FROM dw.ventas v
+    JOIN dw.usuario u ON v.usuario_id = u.id
+    JOIN dw.v_stg_base b ON b.user_pseudo_id = u.user_key
+    WHERE v.transaccion_exitosa = TRUE
+)
+SELECT 
+    v.source,
+    COUNT(DISTINCT v.user_pseudo_id) AS usuarios_visitantes,
+    COUNT(DISTINCT c.user_key) AS usuarios_compradores,
+    ROUND(
+        COUNT(DISTINCT c.user_key)::numeric 
+        / NULLIF(COUNT(DISTINCT v.user_pseudo_id),0) * 100, 2
+    ) AS conversion_rate_pct
+FROM visitas v
+LEFT JOIN compradores c 
+    ON v.user_pseudo_id = c.user_key
+   AND v.source = c.source
+GROUP BY v.source
+ORDER BY conversion_rate_pct DESC;
+
+-- Alternative: Consider all registered users as visitors
+WITH
+	compradores AS (
+    SELECT DISTINCT
+        v.usuario_id,
+        f.año as año,
+        f.semana as semana
+    FROM dw.ventas v
+    JOIN anosemana f ON v.fecha_id = f.id
+	JOIN dw.usuario u ON u.id = v.usuario_id
+    WHERE v.transaccion_exitosa = TRUE
+),
+visitantes AS (
+    SELECT 
+		f.año,
+		f.semana,
+        u.id AS usuario_id,
+        u.pais
+    FROM dw.usuario u 
+	JOIN dw.eventos e 
+		ON e.usuario_id = u.id
+	JOIN anosemana f ON e.fecha_id = f.id
+	WHERE u.pais IS NOT NULL
+), compradores_y_visitantes as (
+	SELECT 
+		v.año,
+		v.semana,
+		v.usuario_id as visitante,
+		NULL as comprador
+	FROM visitantes v
+	UNION 
+	SELECT 
+		c.año,
+		c.semana,
+		NULL as visitante,
+		c.usuario_id as comprador
+	FROM compradores c 
+)
+SELECT 
+	año,
+	semana,
+	COUNT(DISTINCT visitante) AS usuarios_visitantes,
+	COUNT(DISTINCT comprador) AS usuarios_compradores,
+	ROUND(
+        COUNT(DISTINCT comprador)::numeric / NULLIF(COUNT(DISTINCT visitante),0) * 100, 2
+    ) AS conversion_rate_pct
+FROM compradores_y_visitantes
+GROUP BY año, semana;
+
+
+
+-- Ticket promedio por fuente de tráfico
+WITH ordenes AS (
+    -- monto total por orden
+    SELECT 
+        v.orden_id,
+        SUM(v.monto) AS monto_total
+    FROM dw.ventas v
+    GROUP BY v.orden_id
+),
+ordenes_fuente AS (
+    -- asignamos fuente a cada orden usando transaction_id
+    SELECT DISTINCT
+        b.transaction_id AS orden_id,
+        NULLIF(b.source,'') AS source
+    FROM dw.v_stg_base b
+    WHERE b.transaction_id IS NOT NULL
+)
+SELECT 
+    f.source,
+    ROUND(AVG(o.monto_total),2) AS ticket_promedio
+FROM ordenes o
+JOIN ordenes_fuente f ON o.orden_id = f.orden_id
+GROUP BY f.source
+ORDER BY ticket_promedio DESC;
+
+
+
+-- Porcentaje de abandono por dispositivo
+SELECT 
+    d.tipo AS dispositivo,
+    COUNT(DISTINCT e.usuario_id) AS usuarios_checkout,
+    COUNT(DISTINCT e.usuario_id) FILTER (WHERE e.venta_id IS NOT NULL) AS usuarios_con_compra,
+    COUNT(DISTINCT e.usuario_id) FILTER (WHERE e.venta_id IS NULL) AS usuarios_abandono,
+    ROUND(
+        COUNT(DISTINCT e.usuario_id) FILTER (WHERE e.venta_id IS NULL)::numeric
+        / NULLIF(COUNT(DISTINCT e.usuario_id),0) * 100, 2
+    ) AS abandono_pct
+FROM dw.eventos e
+JOIN dw.dispositivo d ON e.dispositivo_id = d.id
+WHERE e.tipo = 'begin_checkout'
+GROUP BY d.tipo
+ORDER BY abandono_pct DESC;
+
+-- Evolución del abandono por semana, por dispositivo.
+SELECT 
+	año,
+	semana,
+    d.tipo AS dispositivo,
+    COUNT(DISTINCT e.usuario_id) AS usuarios_checkout,
+    COUNT(DISTINCT e.usuario_id) FILTER (WHERE e.venta_id IS NOT NULL) AS usuarios_con_compra,
+    COUNT(DISTINCT e.usuario_id) FILTER (WHERE e.venta_id IS NULL) AS usuarios_abandono,
+    ROUND(
+        COUNT(DISTINCT e.usuario_id) FILTER (WHERE e.venta_id IS NULL)::numeric
+        / NULLIF(COUNT(DISTINCT e.usuario_id),0) * 100, 2
+    ) AS abandono_pct
+FROM dw.eventos e
+JOIN dw.dispositivo d ON e.dispositivo_id = d.id
+JOIN anosemana f on e.fecha_id = f.id
+WHERE e.tipo = 'begin_checkout'
+GROUP BY d.tipo, año, semana
+ORDER BY d.tipo, año, semana;
+
+-- Porcentaje de abandono total
+SELECT
+    COUNT(DISTINCT usuario_id) AS usuarios_checkout,
+    COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NOT NULL) AS usuarios_con_compra,
+    COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NULL) AS usuarios_abandono,
+    ROUND(
+        COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NULL)::numeric 
+        / NULLIF(COUNT(DISTINCT usuario_id),0) * 100, 2
+    ) AS abandono_pct
+FROM dw.eventos
+WHERE tipo = 'begin_checkout';
+
+-- Evolución semanal del porcentaje de abandono
+SELECT
+	año, semana,
+    COUNT(DISTINCT usuario_id) AS usuarios_checkout,
+    COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NOT NULL) AS usuarios_con_compra,
+    COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NULL) AS usuarios_abandono,
+    ROUND(
+        COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NULL)::numeric 
+        / NULLIF(COUNT(DISTINCT usuario_id),0) * 100, 2
+    ) AS abandono_pct
+FROM dw.eventos e JOIN AnoSemana f ON e.fecha_id = f.id
+WHERE tipo = 'begin_checkout'
+GROUP BY  año, semana;
+
+-- Delta Week-on-week
+WITH stats AS (
+    SELECT
+        año,
+        semana,
+        COUNT(DISTINCT usuario_id) AS usuarios_checkout,
+        COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NOT NULL) AS usuarios_con_compra,
+        COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NULL) AS usuarios_abandono,
+        ROUND(
+            COUNT(DISTINCT usuario_id) FILTER (WHERE venta_id IS NULL)::numeric 
+            / NULLIF(COUNT(DISTINCT usuario_id),0) * 100, 2
+        ) AS abandono_pct
+    FROM dw.eventos e 
+    JOIN AnoSemana f ON e.fecha_id = f.id
+    WHERE tipo = 'begin_checkout'
+    GROUP BY año, semana
+)
+SELECT
+    año,
+    semana,
+    usuarios_checkout - LAG(usuarios_checkout) OVER (ORDER BY año, semana) AS delta_checkout,
+    usuarios_con_compra - LAG(usuarios_con_compra) OVER (ORDER BY año, semana) AS delta_compra,
+    usuarios_abandono - LAG(usuarios_abandono) OVER (ORDER BY año, semana) AS delta_abandono,
+    abandono_pct - LAG(abandono_pct) OVER (ORDER BY año, semana) AS delta_abandono_pct
+FROM stats
+ORDER BY año, semana;
+
+
+
+-- Revenue por dispositivo
+SELECT 
+    d.tipo AS dispositivo,
+    COUNT(DISTINCT v.usuario_id) AS usuarios,
+    SUM(v.monto) AS revenue_total,
+    ROUND(SUM(v.monto)::numeric * 100 / SUM(SUM(v.monto)) OVER (), 2) AS pct_revenue
+FROM dw.ventas v
+JOIN dw.dispositivo d ON v.dispositivo_id = d.id
+GROUP BY d.tipo
+ORDER BY revenue_total DESC;
+
+
+-- ANALISIS 
+-- DE
+-- CONVERSION RATE
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS conversion_rate_per_country AS 
+WITH visitantes AS (
+    SELECT 
+        u.id AS usuario_id,
+        u.pais
+    FROM dw.usuario u
+    WHERE u.pais IS NOT NULL
+),
+compradores AS (
+    SELECT DISTINCT
+        v.usuario_id,
+        u.pais
+    FROM dw.ventas v
+    JOIN dw.usuario u ON v.usuario_id = u.id
+    WHERE v.transaccion_exitosa = TRUE
+)
+    SELECT 
+        f.año,
+        f.mes,
+        v.pais,
+        COUNT(DISTINCT v.usuario_id) AS usuarios_visitantes,
+        COUNT(DISTINCT c.usuario_id) AS usuarios_compradores,
+        ROUND(
+            COUNT(DISTINCT c.usuario_id)::numeric / NULLIF(COUNT(DISTINCT v.usuario_id),0) * 100, 2
+        ) AS conversion_rate_pct
+    FROM visitantes v
+    LEFT JOIN compradores c 
+        ON v.usuario_id = c.usuario_id
+		AND v.pais = c.pais
+	LEFT JOIN dw.fecha f
+        on f.año = f.año
+        AND f.mes = f.mes
+    GROUP BY f.año, f.mes, v.pais
+    HAVING COUNT(DISTINCT v.usuario_id) > 0;
+
+
+-- Conversion rate por país
+WITH visitantes AS (
+    SELECT 
+        u.id AS usuario_id,
+        u.pais
+    FROM dw.usuario u
+    WHERE u.pais IS NOT NULL
+),
+compradores AS (
+    SELECT DISTINCT
+        v.usuario_id,
+        u.pais
+    FROM dw.ventas v
+    JOIN dw.usuario u ON v.usuario_id = u.id
+    WHERE v.transaccion_exitosa = TRUE
+)
+SELECT 
+    v.pais,
+    COUNT(DISTINCT v.usuario_id) AS usuarios_visitantes,
+    COUNT(DISTINCT c.usuario_id) AS usuarios_compradores,
+    COUNT(*) FILTER (WHERE c.usuario_id IS NOT NULL) AS ventas_totales,
+    ROUND(
+        COUNT(DISTINCT c.usuario_id)::numeric / NULLIF(COUNT(DISTINCT v.usuario_id),0) * 100, 2
+    ) AS conversion_rate_pct
+FROM visitantes v
+LEFT JOIN compradores c 
+    ON v.usuario_id = c.usuario_id
+GROUP BY v.pais
+ORDER BY ventas_totales DESC;
+
+
+SELECT
+    año,
+    mes,
+    pais,
+    usuarios_visitantes,
+    usuarios_compradores,
+    conversion_rate_pct
+FROM conversion_rate_per_country
+WHERE conversion_rate_pct <= 30
+ORDER BY año, mes;
+
+
+
+
+
